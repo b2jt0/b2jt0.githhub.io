@@ -1,1 +1,194 @@
-xx
+<head>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Lucida Sans', 'Lucida Sans Regular', 'Lucida Grande', 'Lucida Sans Unicode', Geneva, Verdana, sans-serif;
+            direction: rtl;
+            font-size: 2em;
+            background-color: #2e2b39;
+        }
+
+        #header {
+            text-align: center;
+            color: #999;
+            margin-top: 100px;
+            margin-bottom: 120px;
+        }
+
+        #now-date {
+            font-size: 2em;
+
+        }
+
+        #now-time {
+            font-size: 3em;
+            color: #e6ebe0;
+        }
+
+        #content {
+            margin-right: 50px;
+            margin-left: 50px;
+        }
+
+        .item {
+            border-top: 10px solid #9c4954;
+            border-right: 10px solid #9c4954;
+            border-left: 10px solid #9c4954;
+            border-bottom-left-radius: 20px;
+            border-bottom-right-radius: 20px;
+            margin-bottom: 100px;
+            margin-top: 30px;
+        }
+
+        .item-timestamp {
+            color: #e6ebe0;
+            padding-top: 10px;
+            padding-bottom: 10px;
+            width: 100%;
+            text-align: center;
+            background-color: #9c4954;
+        }
+
+        .item-shorttext {
+            font-size: 1.5em;
+            color: #e6ebe0;
+            padding-top: 40px;
+            padding-right: 40px;
+            padding-top: 40px;
+        }
+
+        .item-longtext {
+            text-align: justify;
+            font-size: 1.25em;
+            color: #999;
+            padding-top: 40px;
+            padding-right: 40px;
+            padding-left: 40px;
+        }
+
+        #footer {
+            color: #999;
+            text-align: center;
+        }
+    </style>
+
+</head>
+
+<body>
+
+    <div id="header">
+        <div id="now-time"></div>
+        <div id="now-date"></div>
+    </div>
+
+    <div id="content">
+
+    </div>
+
+    <script>
+        // todo: localstorage store ids to tell what's new
+        var now = new Date()
+
+        cb = now.getTime()
+        const url = `https://api.codetabs.com/v1/proxy/?cb=${cb}&quest=https://www.ynet.co.il/news/category/184?cb=${cb}`;
+
+        var elemHeader = document.getElementById("header")
+        // todo: loading indiction
+        var elemDate = document.getElementById("now-date")
+        var elemTime = document.getElementById("now-time")
+
+        const dateTimeFormat = new Intl.DateTimeFormat("he-IL", { day: "2-digit", month: "2-digit", year: "2-digit" }
+        );
+        parts = dateTimeFormat.formatToParts(now)
+        var day = parts[0].value
+        var month = parts[2].value
+        var year = parts[4].value
+
+        var date = now.toLocaleDateString(navigator.language, { day: "2-digit", month: "2-digit", year: "2-digit" }
+        )
+        var time = now.toLocaleTimeString(["il"], { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }
+        )
+
+        elemDate.innerText = `${day}/${month}/${year}`
+        elemTime.innerText = `${time}`
+
+
+        const rtf = new Intl.RelativeTimeFormat("he", {
+            localeMatcher: "best fit",
+            numeric: "auto",
+            style: "long",
+        });
+
+        // in miliseconds
+        var units = {
+            year: 24 * 60 * 60 * 1000 * 365,
+            month: 24 * 60 * 60 * 1000 * 365 / 12,
+            day: 24 * 60 * 60 * 1000,
+            hour: 60 * 60 * 1000,
+            minute: 60 * 1000,
+            second: 1000
+        }
+
+        var relativeToNow = (d2) => {
+            var elapsed = d2 - now
+            for (var u in units)
+                if (Math.abs(elapsed) >= units[u] || u == 'second')
+                    return rtf.format(Math.round(elapsed / units[u]), u)
+        }
+
+        const options = {
+            headers: {
+            }
+        };
+
+        fetch(url, { options })
+            .then((response) => response.text())
+            .then((text) => {
+                console.log(text);
+                var header = ',\'Accordion\',{"items":'
+                var footer = ',"isLTR":false,"languageCode":"he-IL","hasArticleLink":false}]);'
+                var startArr = text.indexOf(header);
+                var endArr = text.indexOf(footer);
+                console.log(startArr, endArr)
+                arr = text.slice(startArr + header.length, endArr)
+                console.log(arr)
+                res = JSON.parse(arr)
+                // document.getElementsByTagName('body')[0].innerText = arr;
+
+                var elemContent = document.getElementById("content")
+                res.forEach((itm) => {
+                    elemItem = document.createElement("div")
+                    elemItem.className = 'item'
+
+                    elemShortText = document.createElement("div")
+                    elemShortText.className = 'item-shorttext'
+                    elemShortText.innerText = itm.title
+
+                    elemLongText = document.createElement("div")
+                    elemLongText.className = 'item-longtext'
+                    elemLongText.innerText = itm.text
+
+                    elemTimestamp = document.createElement("div")
+                    elemTimestamp.className = 'item-timestamp'
+                    relative_to_now = relativeToNow(new Date(itm.date))
+                    elemTimestamp.innerText = relative_to_now
+
+
+                    elemItem.appendChild(elemTimestamp)
+                    elemItem.appendChild(elemShortText)
+                    elemItem.appendChild(elemLongText)
+                    elemContent.appendChild(elemItem)
+                });
+
+                elemFooter = document.createElement("div")
+                elemFooter.id = 'footer'
+                elemFooter.innerText = 'version 0.0.1'
+                elemContent.appendChild(elemFooter)
+
+            });
+    </script>
+</body>
