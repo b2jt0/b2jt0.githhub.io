@@ -115,7 +115,6 @@
 
     <script>
         const __version = '0.0.3';
-        // todo: localstorage store ids to tell what's new
         var now = new Date()
 
         cb = now.getTime()
@@ -236,7 +235,6 @@
                     elemContent.appendChild(elemFooter)
 
                     if (unread_items.length > 0 && unread_items.length < res.length) {
-                        // todo: check length isn't all items, which means we don't have cache
                         var elems = document.getElementsByClassName("item-new-sign")
                         Array.from(elems).forEach((e) => {
                             e.style.display = 'block';
