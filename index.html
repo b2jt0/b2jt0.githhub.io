@@ -34,22 +34,48 @@
             margin-left: 50px;
         }
 
+        .err {
+            color: #e6ebe0;
+            font-size: 2em;
+            text-align: center;
+            direction: ltr;
+        }
+
         .item {
             border-top: 10px solid #9c4954;
             border-right: 10px solid #9c4954;
             border-left: 10px solid #9c4954;
+            border-top-left-radius: 20px;
+            border-top-right-radius: 20px;
+
             border-bottom-left-radius: 20px;
             border-bottom-right-radius: 20px;
             margin-bottom: 100px;
             margin-top: 30px;
         }
 
+        .item-new-sign {
+            /*by default in case everything is new*/
+            float: left;
+            display: none;
+            width: 30px;
+            height: 30px;
+            background-color: #e6ebe0;
+            border-radius: 15px;
+            position: relative;
+            margin-left: 6px;
+            top: -12px;
+        }
+
         .item-timestamp {
             color: #e6ebe0;
-            padding-top: 10px;
-            padding-bottom: 10px;
             width: 100%;
             text-align: center;
+            font-size: 40px;
+            padding-top: 20px;
+            padding-bottom: 30px;
+            /* +10 for border */
+
             background-color: #9c4954;
         }
 
@@ -70,6 +96,7 @@
         #footer {
             color: #999;
             text-align: center;
+            padding-bottom: 40px
         }
     </style>
 
@@ -87,6 +114,7 @@
     </div>
 
     <script>
+        const __version = '0.0.3';
         // todo: localstorage store ids to tell what's new
         var now = new Date()
 
@@ -97,6 +125,7 @@
         // todo: loading indiction
         var elemDate = document.getElementById("now-date")
         var elemTime = document.getElementById("now-time")
+        var elemContent = document.getElementById("content")
 
         const dateTimeFormat = new Intl.DateTimeFormat("he-IL", { day: "2-digit", month: "2-digit", year: "2-digit" }
         );
@@ -117,7 +146,7 @@
         const rtf = new Intl.RelativeTimeFormat("he", {
             localeMatcher: "best fit",
             numeric: "auto",
-            style: "long",
+            style: "short",
         });
 
         // in miliseconds
@@ -137,55 +166,92 @@
                     return rtf.format(Math.round(elapsed / units[u]), u)
         }
 
-        const options = {
-            headers: {
-            }
-        };
+        function parseData(text) {
+            var header = ',\'Accordion\',{"items":'
+            var footer = ',"isLTR":false,"languageCode":"he-IL","hasArticleLink":false}]);'
+            var startArr = text.indexOf(header);
+            var endArr = text.indexOf(footer);
+            console.log(startArr, endArr)
 
-        fetch(url, { options })
-            .then((response) => response.text())
-            .then((text) => {
-                console.log(text);
-                var header = ',\'Accordion\',{"items":'
-                var footer = ',"isLTR":false,"languageCode":"he-IL","hasArticleLink":false}]);'
-                var startArr = text.indexOf(header);
-                var endArr = text.indexOf(footer);
-                console.log(startArr, endArr)
-                arr = text.slice(startArr + header.length, endArr)
-                console.log(arr)
-                res = JSON.parse(arr)
-                // document.getElementsByTagName('body')[0].innerText = arr;
+            arr = text.slice(startArr + header.length, endArr)
 
-                var elemContent = document.getElementById("content")
-                res.forEach((itm) => {
-                    elemItem = document.createElement("div")
-                    elemItem.className = 'item'
+            console.log(arr)
+            res = JSON.parse(arr)
 
-                    elemShortText = document.createElement("div")
-                    elemShortText.className = 'item-shorttext'
-                    elemShortText.innerText = itm.title
+            return res
+        }
 
-                    elemLongText = document.createElement("div")
-                    elemLongText.className = 'item-longtext'
-                    elemLongText.innerText = itm.text
+        function mainload() {
+            fetch(url, {})
+                .then((response) => response.text())
+                .then((text) => {
+                    console.log(text);
+                    var already_read = Object.keys(localStorage)
+                    localStorage.clear()
 
-                    elemTimestamp = document.createElement("div")
-                    elemTimestamp.className = 'item-timestamp'
-                    relative_to_now = relativeToNow(new Date(itm.date))
-                    elemTimestamp.innerText = relative_to_now
+                    var unread_items = []
 
+                    res = parseData(text)
+                    res.forEach((itm) => {
 
-                    elemItem.appendChild(elemTimestamp)
-                    elemItem.appendChild(elemShortText)
-                    elemItem.appendChild(elemLongText)
-                    elemContent.appendChild(elemItem)
+                        var artId = itm.articleId
+
+                        elemItem = document.createElement("div")
+                        elemItem.className = 'item'
+
+                        var elemTimestamp = document.createElement("div")
+                        elemTimestamp.className = 'item-timestamp'
+                        relative_to_now = relativeToNow(new Date(itm.date))
+                        elemTimestamp.innerText = relative_to_now
+
+                        if (!already_read.includes(artId)) {
+                            console.log("new item", artId)
+                            var elemNew = document.createElement("div")
+                            elemNew.className = 'item-new-sign'
+                            elemTimestamp.appendChild(elemNew)
+                            unread_items.push(artId)
+                        }
+
+                        var elemShortText = document.createElement("div")
+                        elemShortText.className = 'item-shorttext'
+                        elemShortText.innerText = itm.title
+
+                        var elemLongText = document.createElement("div")
+                        elemLongText.className = 'item-longtext'
+                        elemLongText.innerText = itm.text
+
+                        localStorage.setItem(artId, undefined) // save all items, as we cleared the old one
+
+                        // add elements
+                        elemItem.appendChild(elemTimestamp)
+                        elemItem.appendChild(elemShortText)
+                        elemItem.appendChild(elemLongText)
+                        elemContent.appendChild(elemItem)
+                    });
+
+                    // add footer
+                    elemFooter = document.createElement("div")
+                    elemFooter.id = 'footer'
+                    elemFooter.innerText = `version ${__version}`;
+                    elemContent.appendChild(elemFooter)
+
+                    if (unread_items.length > 0 && unread_items.length < res.length) {
+                        // todo: check length isn't all items, which means we don't have cache
+                        var elems = document.getElementsByClassName("item-new-sign")
+                        Array.from(elems).forEach((e) => {
+                            e.style.display = 'block';
+                        });
+                    }
                 });
-
-                elemFooter = document.createElement("div")
-                elemFooter.id = 'footer'
-                elemFooter.innerText = 'version 0.0.2'
-                elemContent.appendChild(elemFooter)
-
-            });
+        }
+        try {
+            mainload()
+        } catch (e) {
+            console.error(e)
+            elemErr = document.createElement("div")
+            elemErr.className = 'err'
+            elemErr.innerText = "error :("
+            elemContent.appendChild(elemErr)
+        }
     </script>
 </body>
